@@ -180,6 +180,9 @@ deployment and partner sign-on, not new code.
   cruciate, collateral ligaments and menisci.” The full-report and
   impression-only paths exclude injured, uncertain and unassessed structures
   from that statement and name the remaining intact structures.
+  These lists use a comma after “cruciate” and one “and” before the final
+  structure. Impression post-processing also corrects the double-“and” form
+  without adding structures or changing the Findings.
 
 ### Clinical governance (Phase 1, just shipped)
 

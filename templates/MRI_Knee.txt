@@ -89,6 +89,7 @@ Multiplanar multisequence non-contrast MRI of the knee.
 **Instructions:**
 - Concise bullet-point summary of key findings.
 - After positive findings, use one supported pertinent-negative point: 'Intact cruciate, collateral ligaments and menisci.' Adjust this to name only the remaining confirmed intact structures when an injury is already described. Exclude injured, sprained, partially torn, uncertain or unassessed structures. Do not repeat the injury or infer intact structures from silence.
+- Use a comma after 'cruciate' and only one 'and' before the final structure. For a medial meniscal tear, use 'Intact cruciate, collateral ligaments and lateral meniscus.' Do not write 'cruciate and collateral ligaments and lateral meniscus'.
 - Include only clinically relevant findings. Minor incidental findings that are fully described in the body do not need to be restated here.
 - Keep isolated low-grade meniscal free-edge fraying, degenerative signal and intrasubstance signal in the Findings only when there is no definite tear. Include a definite meniscal tear, displaced fragment, root injury, extrusion or parameniscal cyst. Preserve minor fraying only if the radiologist explicitly dictates that it is clinically important.
 - For a normal/negative study, include a closing statement where appropriate, e.g. 'No cause for the patient's symptoms identified on this examination.'

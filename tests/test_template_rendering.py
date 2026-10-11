@@ -256,6 +256,8 @@ class StructuredReportRenderingTests(unittest.TestCase):
                 self.assertIn("parameniscal cyst", prompt)
                 self.assertIn(fmt.KNEE_IMPRESSION_NEGATIVE_RULE, prompt)
                 self.assertIn("Intact cruciate, collateral ligaments and menisci.", prompt)
+                self.assertIn("Intact cruciate, collateral ligaments and lateral meniscus.", prompt)
+                self.assertIn('only one "and"', prompt)
                 self.assertIn("Intact PCL, collateral ligaments and menisci.", prompt)
                 self.assertIn("Intact cruciate ligaments, LCL and menisci.", prompt)
                 self.assertIn("sprains and partial", prompt)
@@ -266,6 +268,20 @@ class StructuredReportRenderingTests(unittest.TestCase):
         self.assertIn("unassessed structures", template)
 
     def test_three_impression_bullets_are_numbered_for_reliable_paste(self):
+        for remaining in ("menisci", "medial meniscus", "lateral meniscus"):
+            for cruciate in ("cruciate", "cruciate ligaments"):
+                original = f"Intact {cruciate} and collateral ligaments and {remaining}."
+                expected = f"Intact cruciate, collateral ligaments and {remaining}."
+                self.assertEqual(fmt.number_long_impression_body(original), expected)
+                self.assertEqual(fmt.number_long_impression_body(expected), expected)
+                full_report = f"**FINDINGS:**\n{original}\n\n**IMPRESSION:**\n- {original}"
+                corrected = fmt.postprocess_report(full_report)
+                self.assertIn(f"**FINDINGS:**\n{original}", corrected)
+                self.assertIn(f"**IMPRESSION:**\n- {expected}", corrected)
+        self.assertEqual(
+            fmt.number_long_impression_body("Intact PCL, LCL and menisci."),
+            "Intact PCL, LCL and menisci.",
+        )
         report = (
             "**Findings:**\n- Finding detail one.\n- Finding detail two.\n- Finding detail three.\n\n"
             "**Impression:**\n- First conclusion.\n- Second conclusion.\n- Third conclusion."

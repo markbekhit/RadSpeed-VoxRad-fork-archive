@@ -282,11 +282,15 @@ KNEE_IMPRESSION_NEGATIVE_RULE = """\
 After the significant positive findings, combine the supported intact knee
 structures into one closing point, not separate normal-anatomy bullets.
 When all are intact, use: "Intact cruciate, collateral ligaments and menisci."
+Use a comma after "cruciate" and only one "and", before the final structure.
+Copy this list wording exactly; do not expand it to "cruciate and collateral
+ligaments and menisci" or add "ligaments" after "cruciate" in this catch-all.
 Adjust the sentence when an injury is already described. Exclude every injured
 or uncertain structure from the intact statement, including sprains and partial
 tears even when fibres remain continuous. Name the remaining structures precisely.
 Examples, only when the remaining structures are documented as intact:
-- Medial meniscal tear: "Intact cruciate and collateral ligaments and lateral meniscus."
+- Medial meniscal tear: "Intact cruciate, collateral ligaments and lateral meniscus."
+- Lateral meniscal tear: "Intact cruciate, collateral ligaments and medial meniscus."
 - ACL tear: "Intact PCL, collateral ligaments and menisci."
 - MCL sprain: "Intact cruciate ligaments, LCL and menisci."
 Do not repeat the injury in this negative point. Do not infer intact structures
@@ -1113,7 +1117,15 @@ _MARKDOWN_BULLET_RE = re.compile(r"^(\s*)[-*+•]\s+(.*)$")
 
 
 def number_long_impression_body(text: str) -> str:
-    """Number a headingless impression body when it contains 3+ bullets."""
+    """Apply impression list wording and numbering without changing findings."""
+    # This is punctuation only: retain exactly the model's named structures.
+    text = re.sub(
+        r"\b(intact\s+cruciate)(?:\s+ligaments)?\s+and\s+collateral\s+ligaments"
+        r"\s+and\s+(menisci|(?:medial|lateral)\s+meniscus)\b",
+        r"\1, collateral ligaments and \2",
+        text,
+        flags=re.IGNORECASE,
+    )
     lines = text.splitlines()
     bullet_indexes = [
         index for index, line in enumerate(lines) if _MARKDOWN_BULLET_RE.match(line)
