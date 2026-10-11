@@ -183,6 +183,9 @@ deployment and partner sign-on, not new code.
   These lists use a comma after “cruciate” and one “and” before the final
   structure. Impression post-processing also corrects the double-“and” form
   without adding structures or changing the Findings.
+  MRI dictation corrects the known “3D platform” recognition error to
+  “3T platform”. Batch, streaming and full-report paths require MRI context
+  and retain genuine 3D reconstruction and sequence wording.
 
 ### Clinical governance (Phase 1, just shipped)
 

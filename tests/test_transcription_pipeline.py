@@ -67,23 +67,27 @@ class TranscriptionPipelineTests(unittest.TestCase):
     def test_end_to_end_transcription_formats_encrypts_and_cleans_up(self):
         encrypted_path, audio_key = self._encrypted_audio()
         config.global_md_text_content = (
+            "### Exam:\nMRI shoulder\n"
             "[correct spellings]\nsupraspinatus, glenoid\n[correct spellings]\n"
             "FINDINGS:\n"
         )
         statuses = []
         client = MagicMock()
         client.audio.transcriptions.create.return_value = types.SimpleNamespace(
-            text="mri shoulder supraspinatus tear"
+            text="Imaged on a 3D platform. Supraspinatus tear. 3D reconstruction performed."
         )
 
         try:
             with patch.object(transcriber, "OpenAI", return_value=client) as openai, \
-                 patch.object(transcriber, "format_text", return_value="**FINDINGS:** Tear"), \
+                 patch.object(transcriber, "format_text", return_value="**FINDINGS:** Tear") as format_text, \
                  patch.object(transcriber, "update_status", statuses.append), \
                  patch.object(transcriber.os, "remove", wraps=os.remove) as remove:
                 result = transcriber.transcribe_audio(encrypted_path, audio_key)
 
             self.assertIsNone(result)
+            format_text.assert_called_once_with(
+                "Imaged on a 3T platform. Supraspinatus tear. 3D reconstruction performed."
+            )
             openai.assert_called_once_with(
                 api_key="speech-key", base_url="https://speech.example/v1"
             )
@@ -102,6 +106,28 @@ class TranscriptionPipelineTests(unittest.TestCase):
             self.assertFalse(os.path.exists(decrypted_temp))
             self.assertEqual(statuses[:2], ["Transcribing...📝", "Performing AI analysis.🤖"])
             self.assertIn("Report generated", statuses[-1])
+            # Exercise the Windows/web batch route, not only the helper.
+            import asyncio
+            import importlib
+            from io import BytesIO
+            from fastapi import UploadFile
+            web_app = importlib.import_module("web.app")
+            raw = "Imaged on a 3D platform. 3D reconstruction performed."
+            client.audio.transcriptions.create.return_value = types.SimpleNamespace(text=raw)
+            with patch.object(web_app, "_MOCK_MODE", False), \
+                 patch.object(web_app, "OpenAI", return_value=client):
+                for template, expected in (
+                    ("MRI_Knee.txt", raw.replace("3D platform", "3T platform")),
+                    ("CT_Sinuses.txt", raw),
+                ):
+                    response = asyncio.run(web_app.transcribe(
+                        audio=UploadFile(file=BytesIO(b"synthetic audio"), filename="test.webm"),
+                        template_name=template, whisper_prompt=None, selected_text=None,
+                        user={"id": None, "name": "synthetic", "email": ""},
+                    ))
+                    self.assertEqual(response["transcription"], expected)
+                    self.assertEqual(web_app._sessions.pop(response["session_id"])["transcription"], expected)
+            self.assertIn("3T platform", web_app._build_keyword_list("MRI_Knee.txt"))
         finally:
             os.remove(encrypted_path)
 

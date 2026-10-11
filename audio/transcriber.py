@@ -11,7 +11,7 @@ import google.generativeai as genai
 from config.config import config
 from ui.utils import update_status
 from utils.file_handling import strip_markdown
-from llm.format import format_text
+from llm.format import correct_mri_platform, format_text
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ def transcribe_audio(encrypted_mp3_path, decryption_key):
                 update_status(f"Transcription API error: {e}")
                 return
 
-            transcription = transcription_result.text
+            transcription = correct_mri_platform(transcription_result.text, content)
             update_status("Performing AI analysis.🤖")
             formatted_text = format_text(transcription)
             if formatted_text is None:

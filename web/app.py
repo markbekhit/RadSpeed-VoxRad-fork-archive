@@ -55,6 +55,7 @@ from llm.format import (
     format_text,
     join_template,
     number_long_impression_body,
+    correct_mri_platform,
     postprocess_report,
     split_template,
     stream_format_text,
@@ -1164,6 +1165,9 @@ def _build_keyword_list(template_name: Optional[str], user: Optional[dict] = Non
     keywords = []
     if user:
         keywords = list(_load_user_vocab(user))
+    if template_name and "mri" in template_name.lower():
+        if "3T platform" not in keywords:
+            keywords.append("3T platform")
     for term in template_terms:
         if term not in keywords:
             keywords.append(term)
@@ -2394,6 +2398,7 @@ async def transcribe(
             )
 
         text = result.text.strip()
+        text = correct_mri_platform(text, template_name or "")
         # Hallucination filtering. Voice-edit mode uses a permissive variant
         # that allows short valid replacements ("normal", "intact", "no") but
         # still rejects known Whisper garbage phrases (e.g. "thank you for
@@ -4246,6 +4251,7 @@ async def ws_transcribe(websocket: WebSocket, token: str = ""):
                     if not _is_hallucination(event.text):
                         # Strip em dash artifacts (STT inserts — during pauses)
                         clean = re.sub(r'\s*—\s*', ' ', event.text).strip()
+                        clean = correct_mri_platform(clean, template_name or "")
                         if not clean:
                             continue
                         if event.is_final:
@@ -4312,7 +4318,7 @@ async def ws_transcribe(websocket: WebSocket, token: str = ""):
             logger.warning("provider.close() timed out — forcing teardown")
         provider = None
 
-        full_text = " ".join(finals).strip()
+        full_text = correct_mri_platform(" ".join(finals).strip(), template_name or "")
         # Run synchronous LLM call in a thread so it doesn't block the event loop.
         # Cap at 8 s — if the LLM is slow/unavailable, send the raw streaming
         # transcript rather than hanging.
@@ -4327,6 +4333,7 @@ async def ws_transcribe(websocket: WebSocket, token: str = ""):
                 corrected = full_text
         else:
             corrected = ""
+        corrected = correct_mri_platform(corrected, template_name or "")
 
         _prune_sessions()
         session_id = _create_session(corrected) if corrected else ""

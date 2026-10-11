@@ -217,6 +217,21 @@ class StructuredReportRenderingTests(unittest.TestCase):
         self.assertIn("not canal or subarticular stenosis", prompt)
 
     def test_report_prompt_uses_simple_default_technique_without_invention(self):
+        source = "Imaged on a 3D platform. 3D reconstruction performed."
+        expected = "Imaged on a 3T platform. 3D reconstruction performed."
+        self.assertEqual(fmt.correct_mri_platform(source, "MRI_Knee.txt"), expected)
+        self.assertEqual(fmt.correct_mri_platform(source, "CT_Knee.txt"), source)
+        self.assertEqual(fmt.correct_mri_platform(source, "### Exam:\nCT knee\nComparison: prior MRI."), source)
+        self.assertEqual(fmt.correct_mri_platform(source), source)
+        self.assertEqual(fmt.correct_mri_platform(expected, "MRI_Knee.txt"), expected)
+        self.assertIn(expected, fmt._source_user_message(source, "dictation", "MRI knee"))
+        self.assertIn(source, fmt._source_user_message(source, "worksheet", "MRI knee"))
+        report = f"**EXAM:**\nMRI knee\n\n**TECHNIQUE:**\n{source}"
+        self.assertIn(expected, fmt.postprocess_report(report))
+        self.assertEqual(
+            fmt.correct_mri_platform("CT performed on a 3D platform. Comparison with prior MRI."),
+            "CT performed on a 3D platform. Comparison with prior MRI.",
+        )
         prompt = fmt._report_system_message(
             "### Technique:\nNon-contrast CT of the lumbar spine."
         )
