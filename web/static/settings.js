@@ -196,7 +196,79 @@ function showStatus(text, type) {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+function setupMicrophoneSettings() {
+  const filter = $("microphone-filter");
+  const sensitivity = $("microphone-sensitivity");
+  const button = $("microphone-test");
+  const panel = $("microphone-test-panel");
+  const status = $("microphone-test-status");
+  const prefs = RadSpeedMicrophone.preferences();
+  filter.checked = prefs.enabled;
+  sensitivity.value = prefs.sensitivity;
+  sensitivity.disabled = !filter.checked;
+  let stream = null;
+  let timer = null;
+  let generation = 0;
+  let controller = null;
+
+  function stopTest() {
+    generation++;
+    controller?.abort();
+    controller = null;
+    clearTimeout(timer);
+    RadSpeedMicrophone.stop(stream);
+    stream = null;
+    button.disabled = false;
+    button.textContent = "Test microphone";
+    $("microphone-level").value = 0;
+    status.textContent = "Test stopped. No audio was saved or sent.";
+  }
+
+  function saveMicrophone() {
+    stopTest();
+    panel.hidden = true;
+    sensitivity.disabled = !filter.checked;
+    try {
+      RadSpeedMicrophone.save({ enabled: filter.checked, sensitivity: sensitivity.value });
+      $("microphone-save-status").textContent = "Saved for this device and browser. Changes apply to the next recording.";
+    } catch (_) {
+      $("microphone-save-status").textContent = "Could not save microphone settings. Allow browser storage, then try again.";
+    }
+  }
+  filter.addEventListener("change", saveMicrophone);
+  sensitivity.addEventListener("change", saveMicrophone);
+  button.addEventListener("click", async () => {
+    if (stream) { stopTest(); status.textContent = "Test stopped. No audio was saved or sent."; return; }
+    const attempt = ++generation;
+    controller = new AbortController();
+    button.disabled = true;
+    panel.hidden = false;
+    status.textContent = "Opening microphone…";
+    try {
+      const opened = await RadSpeedMicrophone.open((level) => {
+        if (attempt !== generation) return;
+        $("microphone-level").value = level.rms;
+        status.textContent = level.passing
+          ? "Passing audio. Check that your voice passes and background speech does not."
+          : "Filtering quieter audio. Speak normally to test your voice.";
+      }, { signal: controller.signal });
+      if (attempt !== generation) { RadSpeedMicrophone.stop(opened); return; }
+      stream = opened;
+      button.disabled = false;
+      button.textContent = "Stop test";
+      timer = setTimeout(() => { stopTest(); status.textContent = "Test finished. No audio was saved or sent."; }, 30000);
+    } catch (error) {
+      if (attempt !== generation) return;
+      stopTest();
+      status.textContent = error.message;
+    }
+  });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stopTest(); });
+  window.addEventListener("pagehide", stopTest);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  setupMicrophoneSettings();
   loadSettings();
   $("btn-save").addEventListener("click", saveSettings);
 });

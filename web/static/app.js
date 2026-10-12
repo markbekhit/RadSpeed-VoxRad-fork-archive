@@ -19,7 +19,7 @@ const state = {
   // Silence-triggered real-time transcription
   silenceStart: null,
   isSegmentTranscribing: false,
-  // VAD: true only if RMS exceeded SPEECH_THRESHOLD during this segment
+  // VAD: true only if RMS exceeded the microphone speech threshold
   speechDetected: false,
   // Count of in-flight submitAudioSegment calls — auto-format fires only when 0
   pendingSegments: 0,
@@ -74,7 +74,6 @@ const state = {
 let _suppressStreamingSelChange = false;
 
 const SILENCE_THRESHOLD   = 0.01;   // RMS below this = silence
-const SPEECH_THRESHOLD    = 0.015;  // RMS above this = speech
 const SILENCE_DURATION_MS = 800;    // 800 ms pause triggers segment
 const MIN_SEGMENT_BYTES   = 12000;  // ignore blobs smaller than this
 // Require at least this many ms of cumulative speech-level audio before we
@@ -383,7 +382,8 @@ function startWaveform(stream) {
       const rms = getRMS(dataArr);
       const now = Date.now();
 
-      if (rms >= SPEECH_THRESHOLD) {
+      const speechThreshold = RadSpeedMicrophone.speechThreshold(state.stream);
+      if (rms >= speechThreshold) {
         // Accumulate elapsed speech time so a single noise spike (breath,
         // keyboard click) can't flip speechDetected on its own.
         if (state._speechLastFrameTs) {
@@ -399,7 +399,7 @@ function startWaveform(stream) {
       } else {
         state._speechLastFrameTs = null;
       }
-      if (rms >= SILENCE_THRESHOLD) {
+      if (rms >= Math.min(SILENCE_THRESHOLD, speechThreshold)) {
         state.silenceStart = null;
       } else {
         if (!state.silenceStart) {
@@ -526,7 +526,7 @@ function _startMediaRecorder() {
         stopWaveform();
       }
       if (state.stream) {
-        state.stream.getTracks().forEach((t) => t.stop());
+        RadSpeedMicrophone.stop(state.stream);
         state.stream = null;
       }
     }
@@ -659,7 +659,7 @@ async function startVoiceEditRecording() {
     state.streamingWs = null;
   }
   try {
-    state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.stream = await RadSpeedMicrophone.open();
     startWaveform(state.stream);
     state.silenceStart = null;
     state.isSegmentTranscribing = false;
@@ -673,14 +673,17 @@ async function startVoiceEditRecording() {
     setStatus(`Voice editing ${label} (replacing "${state.voiceEditTarget.selectedText}") — dictate replacement, then pause.`, "active");
   } catch (err) {
     state.voiceEditTarget = null;
-    setStatus(`Microphone access denied: ${err.message}`, "error");
+    RadSpeedMicrophone.stop(state.stream);
+    state.stream = null;
+    stopWaveform();
+    setStatus(`Could not start microphone: ${err.message}`, "error");
   }
 }
 
 async function startSegmentRecording() {
   state.pendingVoiceEditSelection = null; // fresh session — don't inherit old selection
   try {
-    state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.stream = await RadSpeedMicrophone.open();
     startWaveform(state.stream);
     state.silenceStart = null;
     state.isSegmentTranscribing = false;
@@ -692,8 +695,11 @@ async function startSegmentRecording() {
     setUI("recording");
     setStatus("Recording… pause briefly to see live transcription. Select any word to voice-edit it.", "active");
   } catch (err) {
+    RadSpeedMicrophone.stop(state.stream);
+    state.stream = null;
+    stopWaveform();
     setStatus(
-      `Microphone access denied: ${err.message}. Check browser permissions.`,
+      `Could not start microphone: ${err.message}`,
       "error"
     );
   }
@@ -737,9 +743,9 @@ async function startStreamingRecording() {
   const wsUrl   = `${proto}//${location.host}/ws/transcribe?token=${encodeURIComponent(wsToken)}`;
 
   try {
-    state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.stream = await RadSpeedMicrophone.open();
   } catch (err) {
-    setStatus(`Microphone access denied: ${err.message}. Check browser permissions.`, "error");
+    setStatus(`Could not start microphone: ${err.message}`, "error");
     return;
   }
 
@@ -968,7 +974,7 @@ function _cleanupStreaming() {
     state.streamingAudioCtx = null;
   }
   if (state.stream) {
-    state.stream.getTracks().forEach((t) => t.stop());
+    RadSpeedMicrophone.stop(state.stream);
     state.stream = null;
   }
   if (state.streamingWs) {
@@ -1028,7 +1034,7 @@ function stopRecording() {
     // Edge case: recorder already stopped mid-silence-segment restart.
     // Stream cleanup happened (or will happen) in that onstop. Just update UI.
     if (state.stream) {
-      state.stream.getTracks().forEach((t) => t.stop());
+      RadSpeedMicrophone.stop(state.stream);
       state.stream = null;
     }
     state.isSegmentTranscribing = false;
@@ -2690,7 +2696,7 @@ function nextCase({ keepRadiologist = true, force = false } = {}) {
       if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
         try { state.mediaRecorder.stop(); } catch (_) {}
       }
-      if (state.stream) { state.stream.getTracks().forEach((t) => t.stop()); state.stream = null; }
+      if (state.stream) { RadSpeedMicrophone.stop(state.stream); state.stream = null; }
     }
     stopTimer();
     stopWaveform();
@@ -3397,7 +3403,7 @@ async function startFeedback() {
   fbState.selectedText = _captureReportSelection();
 
   try {
-    fbState.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    fbState.stream = await RadSpeedMicrophone.open();
   } catch (err) {
     _resetFeedbackUI();
     setStatus(`Microphone error: ${err.message}`, "error");
@@ -3413,7 +3419,7 @@ async function startFeedback() {
     fbState.mediaRecorder.onstop = _onFeedbackStop;
     fbState.mediaRecorder.start();
   } catch (err) {
-    fbState.stream?.getTracks().forEach((track) => track.stop());
+    RadSpeedMicrophone.stop(fbState.stream);
     fbState.stream = null;
     _resetFeedbackUI();
     setStatus(`Could not start refinement: ${err.message}`, "error");
@@ -3444,7 +3450,7 @@ function stopFeedback() {
 
 async function _onFeedbackStop() {
   if (fbState.stream) {
-    fbState.stream.getTracks().forEach((t) => t.stop());
+    RadSpeedMicrophone.stop(fbState.stream);
     fbState.stream = null;
   }
   fbState.isRecording = false;

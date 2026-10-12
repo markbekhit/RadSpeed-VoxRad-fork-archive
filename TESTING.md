@@ -26,6 +26,32 @@ coverage. The test data is synthetic and must never contain patient information.
 - **Live production QA:** browser smoke testing confirms the deployed UI and
   synthetic Impressions flow after material web changes.
 
+## Microphone filtering
+
+Settings → Microphone enables background filtering by default. Balanced is the
+default sensitivity; Low blocks more quiet audio in a busy room, and High accepts
+quieter dictation. Preferences save automatically in this device/browser's local
+storage and apply when the next recording starts, including the Windows compact
+window and Refine. They do not change another workstation's preferences.
+
+The browser requests noise suppression and echo cancellation, without automatic
+gain control. A local audio worklet then gates lower-level audio before all
+transcription providers receive it. The gate has a 350 ms release and a 2 ms gain
+ramp, with no delayed audio buffer to lose at Stop. If the filter cannot start,
+recording stops with an error rather than silently sending unfiltered audio.
+
+This is not speaker recognition or competing-speech separation. Another speaker
+at a similar level can still pass, particularly while the gate is open. Use a
+close microphone, test both your own speech and room speech in Settings, and
+reduce filtering if quiet words are lost. The 30-second microphone test displays
+levels locally; it never records, uploads, or transcribes audio. No clinical
+recordings were used to select or validate these thresholds.
+
+`e2e/test_microphone.py` covers device-local preferences, all four recording
+entry points, the real Web Audio graph using synthetic tones, level thresholds,
+quiet tails, release, raw-track cleanup, failure without fallback, filter-off
+behavior, and the local-only Settings test.
+
 ## Setup
 
 ```bash

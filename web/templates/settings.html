@@ -24,6 +24,33 @@
 <main>
   <div id="settings-status"></div>
 
+  <div class="card">
+    <div class="settings-section">
+      <div class="settings-section-title">Microphone</div>
+      <label style="display:flex;gap:8px;align-items:center;">
+        <input id="microphone-filter" type="checkbox" checked />
+        Filter background audio (recommended)
+      </label>
+      <p class="settings-info">Reduces noise and blocks quieter audio before transcription. It cannot identify your voice or remove another speaker reliably.</p>
+      <div class="settings-field" style="margin-top:12px;">
+        <label for="microphone-sensitivity">Recording sensitivity</label>
+        <select id="microphone-sensitivity">
+          <option value="high">High — quiet voice</option>
+          <option value="balanced" selected>Balanced — default</option>
+          <option value="low">Low — busy room</option>
+        </select>
+      </div>
+      <p class="settings-info">Try Low beside another radiologist. If words are missing, use Balanced or High. Keep the microphone close to your mouth.</p>
+      <p id="microphone-save-status" class="settings-info" role="status">Saved automatically for this device and browser. Changes apply to the next recording.</p>
+      <button id="microphone-test" class="btn btn-ghost btn-sm" type="button">Test microphone</button>
+      <div id="microphone-test-panel" hidden style="margin-top:10px;">
+        <meter id="microphone-level" min="0" max="0.1" value="0" aria-label="Microphone input level" style="width:100%;"></meter>
+        <p id="microphone-test-status" class="settings-info" role="status"></p>
+      </div>
+      <p class="settings-info">The test stays on this device. It does not save or send audio. It stops after 30 seconds.</p>
+    </div>
+  </div>
+
   <!-- ── Transcription (STT) ── -->
   <div class="card">
     <div class="settings-section">
@@ -283,6 +310,7 @@
   Settings are persisted to settings.ini (non-sensitive values only). API keys are read from environment variables at startup.
 </footer>
 
+<script src="/static/microphone.js?v={{ static_version }}"></script>
 <script src="/static/settings.js?v={{ static_version }}"></script>
 </body>
 </html>

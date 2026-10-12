@@ -382,6 +382,9 @@ def test_compact_transcript_tail_and_voice_refinement(page: Page, base_url: str)
         configurable: true,
         value: {getUserMedia: async () => ({getTracks: () => [{stop() {}}]})},
       });
+      // This fixture tests refinement UI with a non-audio stream. Real audio
+      // filtering and cleanup have separate synthetic microphone coverage.
+      RadSpeedMicrophone.save({enabled: false, sensitivity: 'balanced'});
       window.MediaRecorder = class {
         start() {}
         stop() {
@@ -1227,7 +1230,7 @@ def test_worksheet_qa_tones_down_labels_but_keeps_asserted_findings(
         }"""
     )
     page.locator("#btn-record").click()
-    expect(page.locator("#status")).to_contain_text("Microphone access denied")
+    expect(page.locator("#status")).to_contain_text("Could not start microphone")
     with page.expect_request("**/api/qa-check") as request_info:
         page.locator("#btn-qa").click()
     expect(page.locator("#qa-panel")).to_contain_text(
