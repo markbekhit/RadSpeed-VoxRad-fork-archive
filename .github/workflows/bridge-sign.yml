@@ -1,0 +1,26 @@
+name: Sign bridge update (one-off)
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch the 0.2.37 installer
+        run: |
+          curl -fsSL -o RadSpeed_0.2.37_x64-setup.exe https://raw.githubusercontent.com/markbekhit/radspeed-downloads/main/desktop/RadSpeed_0.2.37_x64-setup.exe
+          sha256sum RadSpeed_0.2.37_x64-setup.exe | tee sha256.txt
+      - name: Sign with the original updater key
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: npx --yes @tauri-apps/cli@2 signer sign RadSpeed_0.2.37_x64-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bridge-sig
+          path: |
+            RadSpeed_0.2.37_x64-setup.exe.sig
+            sha256.txt
