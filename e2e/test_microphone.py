@@ -85,9 +85,19 @@ def _synthetic_microphone(page):
     }""")
 
 
-def test_microphone_real_audio_graph_and_cleanup(page, base_url):
+@pytest.mark.parametrize("stereo", [False, True])
+def test_microphone_real_audio_graph_and_cleanup(page, base_url, stereo):
     page.goto(f"{base_url}/settings")
     _synthetic_microphone(page)
+    if stereo:
+        page.evaluate("""() => {
+          // Simulate hardware that ignores channelCount:1 and delivers the
+          // voice on the right channel only. The worklet must downmix it.
+          syntheticGain.disconnect();
+          window.syntheticMerger = syntheticContext.createChannelMerger(2);
+          syntheticGain.connect(syntheticMerger, 0, 1);
+          syntheticMerger.connect(syntheticDestination);
+        }""")
     page.evaluate("""async () => {
       window.filteredStream = await RadSpeedMicrophone.open(level => { window.inputLevel = level; });
       window.outputContext = new AudioContext();

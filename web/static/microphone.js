@@ -67,6 +67,8 @@ window.RadSpeedMicrophone = (() => {
       if (signal?.aborted) throw new Error("Microphone test cancelled.");
       const source = context.createMediaStreamSource(raw);
       const node = new AudioWorkletNode(context, "reporting-microphone", {
+        channelCount: 1,
+        channelCountMode: "explicit", // Downmix stereo devices; do not lose one microphone channel.
         outputChannelCount: [1],
         processorOptions: { threshold: prefs.enabled ? LEVELS[prefs.sensitivity] : 0 },
       });
